@@ -1,0 +1,6 @@
+{
+	"name": "SelfHostedIRlbc",
+	"properties": {
+		"type": "SelfHosted"
+	}
+}
