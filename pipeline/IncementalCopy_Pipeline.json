@@ -1,5 +1,5 @@
 {
-	"name": "Pipeline_IncementalCopy",
+	"name": "IncementalCopy_Pipeline",
 	"properties": {
 		"activities": [
 			{
