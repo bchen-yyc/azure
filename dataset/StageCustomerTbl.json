@@ -51,8 +51,8 @@
 				"type": "varchar"
 			},
 			{
-				"name": "IsNewCustomer",
-				"type": "bit"
+				"name": "NewCustomerFlag",
+				"type": "varchar"
 			}
 		],
 		"typeProperties": {

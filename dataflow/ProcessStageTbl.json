@@ -1,0 +1,54 @@
+{
+	"name": "ProcessStageTbl",
+	"properties": {
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "IncCopyCustomersTbl",
+						"type": "DatasetReference"
+					},
+					"name": "IncCopyCustomerTbl"
+				},
+				{
+					"dataset": {
+						"referenceName": "IncCopyTargetTbl",
+						"type": "DatasetReference"
+					},
+					"name": "IncCopyTargetTbl"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "StageCustomerTbl",
+						"type": "DatasetReference"
+					},
+					"name": "StageCustomerTbl"
+				}
+			],
+			"transformations": [
+				{
+					"name": "DerivedColumns"
+				},
+				{
+					"name": "UpdateAllColumns"
+				},
+				{
+					"name": "DerivedColumn"
+				},
+				{
+					"name": "RenameColumns"
+				},
+				{
+					"name": "JoinWithTarget"
+				},
+				{
+					"name": "CalculateAgeGroup"
+				}
+			],
+			"script": "source(output(\n\t\tCustomerID as integer,\n\t\tFirstName as string,\n\t\tLastName as string,\n\t\tDateOfBirth as date,\n\t\tCity as string,\n\t\tProvince as string,\n\t\tPostalCode as string,\n\t\t{InsertDate/Time} as timestamp,\n\t\t{LastUpdateDate/Time} as timestamp\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tisolationLevel: 'READ_UNCOMMITTED',\n\tformat: 'table') ~> IncCopyCustomerTbl\nsource(output(\n\t\tCustomerKey as integer,\n\t\tCustomerID as integer,\n\t\tFirstName as string,\n\t\tLastName as string,\n\t\tDateOfBirth as date,\n\t\tCity as string,\n\t\tProvince as string,\n\t\tPostalCode as string,\n\t\tAge as integer,\n\t\tCurrentAgeGroup as string,\n\t\tForwardStortationArea as string,\n\t\tDimensionFromDate as date,\n\t\tDimensionThroughDate as date,\n\t\tCurrentRecordFlag as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tisolationLevel: 'READ_UNCOMMITTED',\n\tformat: 'table') ~> IncCopyTargetTbl\nIncCopyCustomerTbl derive(ForwardStortationArea = substring(PostalCode, 1, 3),\n\t\tNewCustomerFlag = iif({InsertDate/Time}=={LastUpdateDate/Time}, 'Y', 'N'),\n\t\tAge = iif(month(currentDate())*100+dayOfMonth(currentDate()) < month(DateOfBirth)*100+dayOfMonth(DateOfBirth),\r\nyear(currentDate()) - year(DateOfBirth) - 1, \r\nyear(currentDate()) - year(DateOfBirth))) ~> DerivedColumns\nJoinWithTarget derive(CustomerID = iifNull(CustomerID, ExistCustomerID, CustomerID),\n\t\tFirstName = iifNull(FirstName, ExistFirstName, FirstName),\n\t\tLastName = iifNull(LastName, ExistLastName, LastName),\n\t\tDateOfBirth = iifNull(DateOfBirth, ExistDateOfBirth, DateOfBirth),\n\t\tCity = iifNull(City, ExistCity, City),\n\t\tProvince = iifNull(Province, ExistProvince, Province),\n\t\tPostalCode = iifNull(PostalCode, ExistPostalCode, PostalCode),\n\t\tAge = iifNull(Age, ExistAge, Age),\n\t\tForwardSortationArea = iifNull(PostalCode, ExistForwardStortationArea, ForwardStortationArea),\n\t\tNewCustomerFlag = iifNull(ExistNewCustomerFlag, NewCustomerFlag, ExistNewCustomerFlag)) ~> UpdateAllColumns\nIncCopyTargetTbl derive(NewCustomerFlag = 'N',\n\t\tExistAge = iif(month(currentDate())*100+dayOfMonth(currentDate()) < month(DateOfBirth)*100+dayOfMonth(DateOfBirth),\r\nyear(currentDate()) - year(DateOfBirth) - 1, \r\nyear(currentDate()) - year(DateOfBirth))) ~> DerivedColumn\nDerivedColumn select(mapColumn(\n\t\tExistCustomerKey = CustomerKey,\n\t\tExistCustomerID = CustomerID,\n\t\tExistFirstName = FirstName,\n\t\tExistLastName = LastName,\n\t\tExistDateOfBirth = DateOfBirth,\n\t\tExistCity = City,\n\t\tExistProvince = Province,\n\t\tExistPostalCode = PostalCode,\n\t\tExistAge,\n\t\tExistCurrentAgeGroup = CurrentAgeGroup,\n\t\tExistForwardStortationArea = ForwardStortationArea,\n\t\tExistDimensionFromDate = DimensionFromDate,\n\t\tExistDimensionThroughDate = DimensionThroughDate,\n\t\tExistCurrentRecordFlag = CurrentRecordFlag,\n\t\tExistNewCustomerFlag = NewCustomerFlag\n\t),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true) ~> RenameColumns\nDerivedColumns, RenameColumns join(CustomerID == ExistCustomerID,\n\tjoinType:'outer',\n\tbroadcast: 'auto')~> JoinWithTarget\nUpdateAllColumns derive(CurrentAgeGroup = concat(toString(floor(Age/10)), '0-', toString(floor(Age/10)), '9')) ~> CalculateAgeGroup\nCalculateAgeGroup sink(input(\n\t\tCustomerID as integer,\n\t\tFirstName as string,\n\t\tLastName as string,\n\t\tDateOfBirth as date,\n\t\tCity as string,\n\t\tProvince as string,\n\t\tPostalCode as string,\n\t\tAge as integer,\n\t\tCurrentAgeGroup as string,\n\t\tForwardStortationArea as string,\n\t\tNewCustomerFlag as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tdeletable:false,\n\tinsertable:true,\n\tupdateable:false,\n\tupsertable:false,\n\tformat: 'table',\n\tmapColumn(\n\t\tCustomerID,\n\t\tFirstName,\n\t\tLastName,\n\t\tDateOfBirth,\n\t\tCity,\n\t\tProvince,\n\t\tPostalCode,\n\t\tAge,\n\t\tCurrentAgeGroup,\n\t\tForwardStortationArea,\n\t\tNewCustomerFlag\n\t),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true,\n\terrorHandlingOption: 'stopOnFirstError') ~> StageCustomerTbl"
+		}
+	}
+}
