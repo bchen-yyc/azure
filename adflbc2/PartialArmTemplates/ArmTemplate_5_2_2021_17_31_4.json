@@ -1,0 +1,394 @@
+{
+	"$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"type": "string",
+			"metadata": "Data Factory name",
+			"defaultValue": "adflbc2"
+		}
+	},
+	"variables": {
+		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
+	},
+	"resources": [
+		{
+			"name": "[concat(parameters('factoryName'), '/IncementalCopy_Pipeline')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "LookupOldWaterMarkActivity",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "WatermarkDataset",
+								"type": "DatasetReference"
+							}
+						}
+					},
+					{
+						"name": "LookupNewWaterMarkActivity",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderQuery": "select MAX(\"LastUpdateDate/Time\") as NewWatermarkvalue from customers",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "CustomerSource",
+								"type": "DatasetReference"
+							}
+						}
+					},
+					{
+						"name": "IncrementalCopySource",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "LookupOldWaterMarkActivity",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							},
+							{
+								"activity": "LookupNewWaterMarkActivity",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderQuery": {
+									"value": "select * from Customers where [LastUpdateDate/Time] > '@{activity('LookupOldWaterMarkActivity').output.firstRow.WatermarkValue}' and [LastUpdateDate/Time]<= '@{activity('LookupNewWaterMarkActivity').output.firstRow.NewWatermarkvalue}'",
+									"type": "Expression"
+								},
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"sink": {
+								"type": "AzureSqlSink"
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"typeConversion": true,
+								"typeConversionSettings": {
+									"allowDataTruncation": true,
+									"treatBooleanAsNumber": false
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "CustomerSource",
+								"type": "DatasetReference"
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "IncCopyCustomersTbl",
+								"type": "DatasetReference"
+							}
+						]
+					},
+					{
+						"name": "StoredProceduretoWriteWatermarkActivity",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "ProcessStageTbl",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[[dbo].[usp_write_watermark]",
+							"storedProcedureParameters": {
+								"LastModifiedtime": {
+									"value": {
+										"value": "@{activity('LookupNewWaterMarkActivity').output.firstRow.NewWatermarkvalue}",
+										"type": "Expression"
+									},
+									"type": "DateTime"
+								},
+								"TableName": {
+									"value": {
+										"value": "@{activity('LookupOldWaterMarkActivity').output.firstRow.TableName}",
+										"type": "Expression"
+									},
+									"type": "String"
+								}
+							}
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSqlStage",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "IncrementalCopyTarget",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "IncrementalCopySource",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderQuery": {
+									"value": "DECLARE @OldWatermark AS DATETIME\nSET @OldWatermark  = '@{activity('LookupOldWaterMarkActivity').output.firstRow.WatermarkValue}'\n\nDECLARE @NewWatermark AS DATETIME\nSET @NewWatermark  = '@{activity('LookupNewWaterMarkActivity').output.firstRow.NewWatermarkvalue}'\n\nDECLARE @OldWMDM AS INT\nSET @OldWMDM = MONTH(@OldWatermark)*100 + DAY(@OldWatermark)\n\nDECLARE @NewWMDM AS INT\nSET @NewWMDM = MONTH(@NewWatermark)*100 + DAY(@NewWatermark)\n\nselect * from dbo.DimCustomers \nwhere MONTH([DateofBirth])*100 + DAY([DateofBirth]) > @OldWMDM \nand MONTH([DateofBirth])*100 + DAY([DateofBirth]) <= @NewWMDM \nand [CurrentRecordFlag]='Y'",
+									"type": "Expression"
+								},
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"sink": {
+								"type": "AzureSqlSink"
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"typeConversion": true,
+								"typeConversionSettings": {
+									"allowDataTruncation": true,
+									"treatBooleanAsNumber": false
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "DimCustomerTbl",
+								"type": "DatasetReference"
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "IncCopyTargetTbl",
+								"type": "DatasetReference"
+							}
+						]
+					},
+					{
+						"name": "ProcessStageTbl",
+						"type": "ExecuteDataFlow",
+						"dependsOn": [
+							{
+								"activity": "IncrementalCopyTarget",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataflow": {
+								"referenceName": "ProcessStageTbl",
+								"type": "DataFlowReference"
+							},
+							"compute": {
+								"coreCount": 8,
+								"computeType": "General"
+							},
+							"traceLevel": "Fine"
+						}
+					}
+				],
+				"annotations": [],
+				"lastPublishTime": "2021-05-02T05:35:22Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/dataflows/ProcessStageTbl')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/StageCustomerTbl')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureSqlStage",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "CustomerID",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "FirstName",
+						"type": "nvarchar"
+					},
+					{
+						"name": "LastName",
+						"type": "nvarchar"
+					},
+					{
+						"name": "DateOfBirth",
+						"type": "date"
+					},
+					{
+						"name": "City",
+						"type": "varchar"
+					},
+					{
+						"name": "Province",
+						"type": "varchar"
+					},
+					{
+						"name": "PostalCode",
+						"type": "varchar"
+					},
+					{
+						"name": "Age",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "CurrentAgeGroup",
+						"type": "varchar"
+					},
+					{
+						"name": "ForwardStortationArea",
+						"type": "varchar"
+					},
+					{
+						"name": "NewCustomerFlag",
+						"type": "varchar"
+					}
+				],
+				"typeProperties": {
+					"schema": "dbo",
+					"table": "StageCustomers"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ProcessStageTbl')]",
+			"type": "Microsoft.DataFactory/factories/dataflows",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"type": "MappingDataFlow",
+				"typeProperties": {
+					"sources": [
+						{
+							"dataset": {
+								"referenceName": "IncCopyCustomersTbl",
+								"type": "DatasetReference"
+							},
+							"name": "IncCopyCustomerTbl"
+						},
+						{
+							"dataset": {
+								"referenceName": "IncCopyTargetTbl",
+								"type": "DatasetReference"
+							},
+							"name": "IncCopyTargetTbl"
+						}
+					],
+					"sinks": [
+						{
+							"dataset": {
+								"referenceName": "StageCustomerTbl",
+								"type": "DatasetReference"
+							},
+							"name": "StageCustomerTbl"
+						}
+					],
+					"transformations": [
+						{
+							"name": "DerivedColumns"
+						},
+						{
+							"name": "UpdateAllColumns"
+						},
+						{
+							"name": "DerivedColumn"
+						},
+						{
+							"name": "RenameColumns"
+						},
+						{
+							"name": "JoinWithTarget"
+						},
+						{
+							"name": "CalculateAgeGroup"
+						}
+					],
+					"script": "source(output(\n\t\tCustomerID as integer,\n\t\tFirstName as string,\n\t\tLastName as string,\n\t\tDateOfBirth as date,\n\t\tCity as string,\n\t\tProvince as string,\n\t\tPostalCode as string,\n\t\t{InsertDate/Time} as timestamp,\n\t\t{LastUpdateDate/Time} as timestamp\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tisolationLevel: 'READ_UNCOMMITTED',\n\tformat: 'table') ~> IncCopyCustomerTbl\nsource(output(\n\t\tCustomerKey as integer,\n\t\tCustomerID as integer,\n\t\tFirstName as string,\n\t\tLastName as string,\n\t\tDateOfBirth as date,\n\t\tCity as string,\n\t\tProvince as string,\n\t\tPostalCode as string,\n\t\tAge as integer,\n\t\tCurrentAgeGroup as string,\n\t\tForwardStortationArea as string,\n\t\tDimensionFromDate as date,\n\t\tDimensionThroughDate as date,\n\t\tCurrentRecordFlag as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tisolationLevel: 'READ_UNCOMMITTED',\n\tformat: 'table') ~> IncCopyTargetTbl\nIncCopyCustomerTbl derive(ForwardStortationArea = substring(PostalCode, 1, 3),\n\t\tNewCustomerFlag = iif({InsertDate/Time}=={LastUpdateDate/Time}, 'Y', 'N'),\n\t\tAge = iif(month(currentDate())*100+dayOfMonth(currentDate()) < month(DateOfBirth)*100+dayOfMonth(DateOfBirth),\r\nyear(currentDate()) - year(DateOfBirth) - 1, \r\nyear(currentDate()) - year(DateOfBirth))) ~> DerivedColumns\nJoinWithTarget derive(CustomerID = iifNull(CustomerID, ExistCustomerID, CustomerID),\n\t\tFirstName = iifNull(FirstName, ExistFirstName, FirstName),\n\t\tLastName = iifNull(LastName, ExistLastName, LastName),\n\t\tDateOfBirth = iifNull(DateOfBirth, ExistDateOfBirth, DateOfBirth),\n\t\tCity = iifNull(City, ExistCity, City),\n\t\tProvince = iifNull(Province, ExistProvince, Province),\n\t\tPostalCode = iifNull(PostalCode, ExistPostalCode, PostalCode),\n\t\tAge = iifNull(Age, ExistAge, Age),\n\t\tForwardSortationArea = iifNull(PostalCode, ExistForwardStortationArea, ForwardStortationArea),\n\t\tNewCustomerFlag = iifNull(ExistNewCustomerFlag, NewCustomerFlag, ExistNewCustomerFlag)) ~> UpdateAllColumns\nIncCopyTargetTbl derive(NewCustomerFlag = 'N',\n\t\tExistAge = iif(month(currentDate())*100+dayOfMonth(currentDate()) < month(DateOfBirth)*100+dayOfMonth(DateOfBirth),\r\nyear(currentDate()) - year(DateOfBirth) - 1, \r\nyear(currentDate()) - year(DateOfBirth))) ~> DerivedColumn\nDerivedColumn select(mapColumn(\n\t\tExistCustomerKey = CustomerKey,\n\t\tExistCustomerID = CustomerID,\n\t\tExistFirstName = FirstName,\n\t\tExistLastName = LastName,\n\t\tExistDateOfBirth = DateOfBirth,\n\t\tExistCity = City,\n\t\tExistProvince = Province,\n\t\tExistPostalCode = PostalCode,\n\t\tExistAge,\n\t\tExistCurrentAgeGroup = CurrentAgeGroup,\n\t\tExistForwardStortationArea = ForwardStortationArea,\n\t\tExistDimensionFromDate = DimensionFromDate,\n\t\tExistDimensionThroughDate = DimensionThroughDate,\n\t\tExistCurrentRecordFlag = CurrentRecordFlag,\n\t\tExistNewCustomerFlag = NewCustomerFlag\n\t),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true) ~> RenameColumns\nDerivedColumns, RenameColumns join(CustomerID == ExistCustomerID,\n\tjoinType:'outer',\n\tbroadcast: 'auto')~> JoinWithTarget\nUpdateAllColumns derive(CurrentAgeGroup = concat(toString(floor(Age/10)), '0-', toString(floor(Age/10)), '9')) ~> CalculateAgeGroup\nCalculateAgeGroup sink(input(\n\t\tCustomerID as integer,\n\t\tFirstName as string,\n\t\tLastName as string,\n\t\tDateOfBirth as date,\n\t\tCity as string,\n\t\tProvince as string,\n\t\tPostalCode as string,\n\t\tAge as integer,\n\t\tCurrentAgeGroup as string,\n\t\tForwardStortationArea as string,\n\t\tNewCustomerFlag as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tdeletable:false,\n\tinsertable:true,\n\tupdateable:false,\n\tupsertable:false,\n\tformat: 'table',\n\tmapColumn(\n\t\tCustomerID,\n\t\tFirstName,\n\t\tLastName,\n\t\tDateOfBirth,\n\t\tCity,\n\t\tProvince,\n\t\tPostalCode,\n\t\tAge,\n\t\tCurrentAgeGroup,\n\t\tForwardStortationArea,\n\t\tNewCustomerFlag\n\t),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true,\n\terrorHandlingOption: 'stopOnFirstError') ~> StageCustomerTbl"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/StageCustomerTbl')]"
+			]
+		}
+	]
+}
