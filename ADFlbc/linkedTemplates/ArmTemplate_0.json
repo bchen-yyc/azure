@@ -732,7 +732,7 @@
 							"source": {
 								"type": "AzureSqlSource",
 								"sqlReaderQuery": {
-									"value": "select * from dbo.DimCustomers where (MONTH([DateofBirth])*100 + day([DateofBirth]))> 430 and (MONTH([DateofBirth])*100 + day([DateofBirth])) <= 503",
+									"value": "DECLARE @OldWatermark AS DATETIME\nSET @OldWatermark  = '@{activity('LookupOldWaterMarkActivity').output.firstRow.WatermarkValue}'\n\nDECLARE @NewWatermark AS DATETIME\nSET @NewWatermark  = '@{activity('LookupNewWaterMarkActivity').output.firstRow.NewWatermarkvalue}'\n\nDECLARE @OldWMDM AS INT\nSET @OldWMDM = MONTH(@OldWatermark)*100 + DAY(@OldWatermark)\n\nDECLARE @NewWMDM AS INT\nSET @NewWMDM = MONTH(@NewWatermark)*100 + DAY(@NewWatermark)\n\nselect * from dbo.DimCustomers \nwhere MONTH([DateofBirth])*100 + DAY([DateofBirth]) > @OldWMDM \nand MONTH([DateofBirth])*100 + DAY([DateofBirth]) <= @NewWMDM ",
 									"type": "Expression"
 								},
 								"queryTimeout": "02:00:00",
