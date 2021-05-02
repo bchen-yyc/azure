@@ -222,7 +222,7 @@
 							"source": {
 								"type": "AzureSqlSource",
 								"sqlReaderQuery": {
-									"value": "select * from dbo.DimCustomers where (MONTH([DateofBirth])*100 + dayOfMonth([DateofBirth]))> 430 and (MONTH([DateofBirth])*100 + dayOfMonth([DateofBirth])) <= 503",
+									"value": "select * from dbo.DimCustomers where (MONTH([DateofBirth])*100 + day([DateofBirth]))> 430 and (MONTH([DateofBirth])*100 + day([DateofBirth])) <= 503",
 									"type": "Expression"
 								},
 								"queryTimeout": "02:00:00",
