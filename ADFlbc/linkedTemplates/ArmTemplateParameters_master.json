@@ -1,0 +1,33 @@
+{
+	"$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"value": "ADFlbc"
+		},
+		"AzureSqlDatabaseLinkedService_connectionString": {
+			"value": ""
+		},
+		"AzureSqlDbSink_connectionString": {
+			"value": ""
+		},
+		"AzureSqlSource_connectionString": {
+			"value": ""
+		},
+		"AzureSqlStage_connectionString": {
+			"value": ""
+		},
+		"AzureStorageLinkedService_connectionString": {
+			"value": ""
+		},
+		"SqlServer1_connectionString": {
+			"value": ""
+		},
+		"containerUri": {
+			"value": ""
+		},
+		"containerSasToken": {
+			"value": ""
+		}
+	}
+}

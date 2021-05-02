@@ -1,0 +1,956 @@
+{
+	"$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"type": "string",
+			"metadata": "Data Factory name",
+			"defaultValue": "ADFlbc"
+		},
+		"AzureSqlDatabaseLinkedService_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'AzureSqlDatabaseLinkedService'"
+		},
+		"AzureSqlDbSink_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'AzureSqlDbSink'"
+		},
+		"AzureSqlSource_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'AzureSqlSource'"
+		},
+		"AzureSqlStage_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'AzureSqlStage'"
+		},
+		"AzureStorageLinkedService_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'AzureStorageLinkedService'"
+		},
+		"SqlServer1_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'SqlServer1'"
+		}
+	},
+	"variables": {
+		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
+	},
+	"resources": [
+		{
+			"name": "[concat(parameters('factoryName'), '/AzureSqlDatabaseLinkedService')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureSqlDatabase",
+				"typeProperties": {
+					"connectionString": "[parameters('AzureSqlDatabaseLinkedService_connectionString')]"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/AzureSqlDbSink')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureSqlDatabase",
+				"typeProperties": {
+					"connectionString": "[parameters('AzureSqlDbSink_connectionString')]"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/AzureSqlSource')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureSqlDatabase",
+				"typeProperties": {
+					"connectionString": "[parameters('AzureSqlSource_connectionString')]"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/AzureSqlStage')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureSqlDatabase",
+				"typeProperties": {
+					"connectionString": "[parameters('AzureSqlStage_connectionString')]"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/AzureStorageLinkedService')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureBlobStorage",
+				"typeProperties": {
+					"connectionString": "[parameters('AzureStorageLinkedService_connectionString')]"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/SelfHostedIRlbc')]",
+			"type": "Microsoft.DataFactory/factories/integrationRuntimes",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"type": "SelfHosted",
+				"typeProperties": {}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/CustomerSource')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureSqlSource",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "CustomerID",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "FirstName",
+						"type": "nvarchar"
+					},
+					{
+						"name": "LastName",
+						"type": "nvarchar"
+					},
+					{
+						"name": "DateOfBirth",
+						"type": "date"
+					},
+					{
+						"name": "City",
+						"type": "varchar"
+					},
+					{
+						"name": "Province",
+						"type": "varchar"
+					},
+					{
+						"name": "PostalCode",
+						"type": "varchar"
+					},
+					{
+						"name": "InsertDate/Time",
+						"type": "datetime",
+						"precision": 23,
+						"scale": 3
+					},
+					{
+						"name": "LastUpdateDate/Time",
+						"type": "datetime",
+						"precision": 23,
+						"scale": 3
+					}
+				],
+				"typeProperties": {
+					"schema": "dbo",
+					"table": "Customers"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureSqlSource')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DimCustomerTbl')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDbSink",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "CustomerKey",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "CustomerID",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "FirstName",
+						"type": "nvarchar"
+					},
+					{
+						"name": "LastName",
+						"type": "nvarchar"
+					},
+					{
+						"name": "DateOfBirth",
+						"type": "date"
+					},
+					{
+						"name": "City",
+						"type": "varchar"
+					},
+					{
+						"name": "Province",
+						"type": "varchar"
+					},
+					{
+						"name": "PostalCode",
+						"type": "varchar"
+					},
+					{
+						"name": "Age",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "CurrentAgeGroup",
+						"type": "varchar"
+					},
+					{
+						"name": "ForwardStortationArea",
+						"type": "varchar"
+					},
+					{
+						"name": "DimensionFromDate",
+						"type": "date"
+					},
+					{
+						"name": "DimensionThroughDate",
+						"type": "date"
+					},
+					{
+						"name": "CurrentRecordFlag",
+						"type": "varchar"
+					}
+				],
+				"typeProperties": {
+					"schema": "dbo",
+					"table": "DimCustomers"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureSqlDbSink')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/IncCopyCustomersTbl')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureSqlStage",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "CustomerID",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "FirstName",
+						"type": "nvarchar"
+					},
+					{
+						"name": "LastName",
+						"type": "nvarchar"
+					},
+					{
+						"name": "DateOfBirth",
+						"type": "date"
+					},
+					{
+						"name": "City",
+						"type": "varchar"
+					},
+					{
+						"name": "Province",
+						"type": "varchar"
+					},
+					{
+						"name": "PostalCode",
+						"type": "varchar"
+					},
+					{
+						"name": "InsertDate/Time",
+						"type": "datetime",
+						"precision": 23,
+						"scale": 3
+					},
+					{
+						"name": "LastUpdateDate/Time",
+						"type": "datetime",
+						"precision": 23,
+						"scale": 3
+					}
+				],
+				"typeProperties": {
+					"schema": "dbo",
+					"table": "IncCopyCustomers"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureSqlStage')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/IncCopyTargetTbl')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureSqlStage",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "CustomerKey",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "CustomerID",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "FirstName",
+						"type": "nvarchar"
+					},
+					{
+						"name": "LastName",
+						"type": "nvarchar"
+					},
+					{
+						"name": "DateOfBirth",
+						"type": "date"
+					},
+					{
+						"name": "City",
+						"type": "varchar"
+					},
+					{
+						"name": "Province",
+						"type": "varchar"
+					},
+					{
+						"name": "PostalCode",
+						"type": "varchar"
+					},
+					{
+						"name": "Age",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "CurrentAgeGroup",
+						"type": "varchar"
+					},
+					{
+						"name": "ForwardStortationArea",
+						"type": "varchar"
+					},
+					{
+						"name": "DimensionFromDate",
+						"type": "date"
+					},
+					{
+						"name": "DimensionThroughDate",
+						"type": "date"
+					},
+					{
+						"name": "CurrentRecordFlag",
+						"type": "varchar"
+					}
+				],
+				"typeProperties": {
+					"schema": "dbo",
+					"table": "IncCopyTarget"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureSqlStage')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/SinkDataset')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabaseLinkedService",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"SinkTableName": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [],
+				"typeProperties": {
+					"schema": {
+						"value": "@dataset().SinkTableName",
+						"type": "Expression"
+					}
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureSqlDatabaseLinkedService')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/StageCustomerTbl')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureSqlStage",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "CustomerID",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "FirstName",
+						"type": "nvarchar"
+					},
+					{
+						"name": "LastName",
+						"type": "nvarchar"
+					},
+					{
+						"name": "DateOfBirth",
+						"type": "date"
+					},
+					{
+						"name": "City",
+						"type": "varchar"
+					},
+					{
+						"name": "Province",
+						"type": "varchar"
+					},
+					{
+						"name": "PostalCode",
+						"type": "varchar"
+					},
+					{
+						"name": "Age",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "CurrentAgeGroup",
+						"type": "varchar"
+					},
+					{
+						"name": "ForwardStortationArea",
+						"type": "varchar"
+					},
+					{
+						"name": "IsNewCustomer",
+						"type": "bit"
+					}
+				],
+				"typeProperties": {
+					"schema": "dbo",
+					"table": "StageCustomers"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureSqlStage')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/WatermarkDataset')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureSqlStage",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "TableName",
+						"type": "varchar"
+					},
+					{
+						"name": "WatermarkValue",
+						"type": "datetime",
+						"precision": 23,
+						"scale": 3
+					}
+				],
+				"typeProperties": {
+					"schema": "dbo",
+					"table": "watermarktable"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureSqlStage')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/SqlServer1')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "SqlServer",
+				"typeProperties": {
+					"connectionString": "[parameters('SqlServer1_connectionString')]"
+				},
+				"connectVia": {
+					"referenceName": "SelfHostedIRlbc",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/integrationRuntimes/SelfHostedIRlbc')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Pipeline_IncementalCopy')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "LookupOldWaterMarkActivity",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "WatermarkDataset",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						}
+					},
+					{
+						"name": "LookupNewWaterMarkActivity",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderQuery": "select MAX(\"LastUpdateDate/Time\") as NewWatermarkvalue from customers",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "CustomerSource",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						}
+					},
+					{
+						"name": "IncrementalCopySource",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "LookupOldWaterMarkActivity",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							},
+							{
+								"activity": "LookupNewWaterMarkActivity",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderQuery": {
+									"value": "select * from Customers where [LastUpdateDate/Time] > '@{activity('LookupOldWaterMarkActivity').output.firstRow.WatermarkValue}' and [LastUpdateDate/Time]<= '@{activity('LookupNewWaterMarkActivity').output.firstRow.NewWatermarkvalue}'",
+									"type": "Expression"
+								},
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"sink": {
+								"type": "AzureSqlSink"
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"typeConversion": true,
+								"typeConversionSettings": {
+									"allowDataTruncation": true,
+									"treatBooleanAsNumber": false
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "CustomerSource",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "IncCopyCustomersTbl",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "StoredProceduretoWriteWatermarkActivity",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "IncrementalCopyTarget",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[[dbo].[usp_write_watermark]",
+							"storedProcedureParameters": {
+								"LastModifiedtime": {
+									"value": {
+										"value": "@{activity('LookupNewWaterMarkActivity').output.firstRow.NewWatermarkvalue}",
+										"type": "Expression"
+									},
+									"type": "DateTime"
+								},
+								"TableName": {
+									"value": {
+										"value": "@{activity('LookupOldWaterMarkActivity').output.firstRow.TableName}",
+										"type": "Expression"
+									},
+									"type": "String"
+								}
+							}
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSqlStage",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "IncrementalCopyTarget",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "IncrementalCopySource",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderQuery": {
+									"value": "DECLARE @OldWatermark AS DATETIME\nSET @OldWatermark  = '@{activity('LookupOldWaterMarkActivity').output.firstRow.WatermarkValue}'\n\nDECLARE @NewWatermark AS DATETIME\nSET @NewWatermark  = '@{activity('LookupNewWaterMarkActivity').output.firstRow.NewWatermarkvalue}'\n\nDECLARE @BirthDM AS INT\nSET @BirthDM = MONTH([DimensionFromDate])*100 + DAY([DimensionFromDate])\n\nDECLARE @OldWMDM AS INT\nSET @OldWMDM = MONTH(@OldWatermark)*100 + DAY(@OldWatermark)\n\nDECLARE @NewWMDM AS INT\nSET @NewWMDM = MONTH(@NewWatermark)*100 + DAY(@NewWatermark)\n\nselect * from dbo.DimCustomers where @BirthDM > 501 and @BirthDM <= 503",
+									"type": "Expression"
+								},
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"sink": {
+								"type": "AzureSqlSink"
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"typeConversion": true,
+								"typeConversionSettings": {
+									"allowDataTruncation": true,
+									"treatBooleanAsNumber": false
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "DimCustomerTbl",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "IncCopyTargetTbl",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					}
+				],
+				"annotations": [],
+				"lastPublishTime": "2021-05-02T05:35:22Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/WatermarkDataset')]",
+				"[concat(variables('factoryId'), '/datasets/CustomerSource')]",
+				"[concat(variables('factoryId'), '/datasets/IncCopyCustomersTbl')]",
+				"[concat(variables('factoryId'), '/linkedServices/AzureSqlStage')]",
+				"[concat(variables('factoryId'), '/datasets/DimCustomerTbl')]",
+				"[concat(variables('factoryId'), '/datasets/IncCopyTargetTbl')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/SqlServerTable1')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "SqlServer1",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "SqlServerTable",
+				"schema": [],
+				"typeProperties": {}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/SqlServer1')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ProcessNewRows')]",
+			"type": "Microsoft.DataFactory/factories/dataflows",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"type": "MappingDataFlow",
+				"typeProperties": {
+					"sources": [
+						{
+							"dataset": {
+								"referenceName": "IncCopyCustomersTbl",
+								"type": "DatasetReference"
+							},
+							"name": "CustomerTbl"
+						},
+						{
+							"dataset": {
+								"referenceName": "DimCustomerTbl",
+								"type": "DatasetReference"
+							},
+							"name": "ExistTbl"
+						}
+					],
+					"sinks": [
+						{
+							"dataset": {
+								"referenceName": "DimCustomerTbl",
+								"type": "DatasetReference"
+							},
+							"name": "InsertNewRows"
+						},
+						{
+							"dataset": {
+								"referenceName": "DimCustomerTbl",
+								"type": "DatasetReference"
+							},
+							"name": "UpdateSCDRows"
+						},
+						{
+							"dataset": {
+								"referenceName": "DimCustomerTbl",
+								"type": "DatasetReference"
+							},
+							"name": "UpdateInforRows"
+						}
+					],
+					"transformations": [
+						{
+							"name": "CalculateNewColumns"
+						},
+						{
+							"name": "CalculateAgeGroup"
+						},
+						{
+							"name": "IfNewCustomer"
+						},
+						{
+							"name": "TypeOfChange"
+						},
+						{
+							"name": "LookupExistTbl"
+						},
+						{
+							"name": "UnionWithType2SCD"
+						},
+						{
+							"name": "IfAlreadyUpdated"
+						},
+						{
+							"name": "RenamedExistTbl"
+						},
+						{
+							"name": "DerivedNewSCDColumns"
+						},
+						{
+							"name": "UpdateSCD"
+						},
+						{
+							"name": "UpdateInfoOnly"
+						},
+						{
+							"name": "UnionWithAlreadyUpdated"
+						}
+					],
+					"script": "source(output(\n\t\tCustomerID as integer,\n\t\tFirstName as string,\n\t\tLastName as string,\n\t\tDateOfBirth as date,\n\t\tCity as string,\n\t\tProvince as string,\n\t\tPostalCode as string,\n\t\t{InsertDate/Time} as timestamp,\n\t\t{LastUpdateDate/Time} as timestamp\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tisolationLevel: 'READ_UNCOMMITTED',\n\tformat: 'table') ~> CustomerTbl\nsource(output(\n\t\tCustomerKey as integer,\n\t\tCustomerID as integer,\n\t\tFirstName as string,\n\t\tLastName as string,\n\t\tDateOfBirth as date,\n\t\tCity as string,\n\t\tProvince as string,\n\t\tPostalCode as string,\n\t\tAge as integer,\n\t\tCurrentAgeGroup as string,\n\t\tForwardStortationArea as string,\n\t\tDimensionFromDate as date,\n\t\tDimensionThroughDate as date,\n\t\tCurrentRecordFlag as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tisolationLevel: 'READ_UNCOMMITTED',\n\tformat: 'table') ~> ExistTbl\nCustomerTbl derive(Age = iif(month(currentDate())*100+dayOfMonth(currentDate()) < month(DateOfBirth)*100+dayOfMonth(DateOfBirth),\r\nyear(currentDate()) - year(DateOfBirth) - 1, \r\nyear(currentDate()) - year(DateOfBirth)),\n\t\tDimensionFromDate = currentDate(),\n\t\tDimensionThroughDate = toDate('2999-01-01'),\n\t\tCurrentRecordFlag = 'Y',\n\t\tForwardStortationArea = substring(PostalCode, 1, 3)) ~> CalculateNewColumns\nCalculateNewColumns derive(CurrentAgeGroup = concat(toString(floor(Age/10)), '0-', toString(floor(Age/10)), '9')) ~> CalculateAgeGroup\nCalculateAgeGroup split({InsertDate/Time} == {LastUpdateDate/Time},\n\tdisjoint: false) ~> IfNewCustomer@(IsNewCustomers, NotNewCustomers)\nLookupExistTbl split((CurrentAgeGroup != ExistCurrentAgeGroup) || (ForwardStortationArea != ExistForwardStortationArea),\n\tdisjoint: false) ~> TypeOfChange@(Type2Change, Type1Change)\nIfNewCustomer@NotNewCustomers, RenamedExistTbl lookup(CustomerID == ExistCustomerID,\n\tmultiple: false,\n\tpickup: 'last',\n\tasc(ExistCustomerKey, true),\n\tbroadcast: 'auto')~> LookupExistTbl\nIfNewCustomer@IsNewCustomers, IfAlreadyUpdated@NotUpdated union(byName: true)~> UnionWithType2SCD\nTypeOfChange@Type2Change split(DimensionFromDate == ExistDimensionFromDate,\n\tdisjoint: false) ~> IfAlreadyUpdated@(AlreadyUpdated, NotUpdated)\nExistTbl select(mapColumn(\n\t\tExistCustomerKey = CustomerKey,\n\t\tExistCustomerID = CustomerID,\n\t\tExistFirstName = FirstName,\n\t\tExistLastName = LastName,\n\t\tExistDateOfBirth = DateOfBirth,\n\t\tExistCity = City,\n\t\tExistProvince = Province,\n\t\tExistPostalCode = PostalCode,\n\t\tExistAge = Age,\n\t\tExistCurrentAgeGroup = CurrentAgeGroup,\n\t\tExistForwardStortationArea = ForwardStortationArea,\n\t\tExistDimensionFromDate = DimensionFromDate,\n\t\tExistDimensionThroughDate = DimensionThroughDate,\n\t\tExistCurrentRecordFlag = CurrentRecordFlag\n\t),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true) ~> RenamedExistTbl\nIfAlreadyUpdated@NotUpdated derive(NewDimensionThroughDate = currentDate()-1,\n\t\tNewCurrentRecordFlag = 'N') ~> DerivedNewSCDColumns\nDerivedNewSCDColumns alterRow(updateIf(1==1)) ~> UpdateSCD\nUnionWithAlreadyUpdated alterRow(updateIf(1==1)) ~> UpdateInfoOnly\nTypeOfChange@Type1Change, IfAlreadyUpdated@AlreadyUpdated union(byName: true)~> UnionWithAlreadyUpdated\nUnionWithType2SCD sink(input(\n\t\tCustomerKey as integer,\n\t\tCustomerID as integer,\n\t\tFirstName as string,\n\t\tLastName as string,\n\t\tDateOfBirth as date,\n\t\tCity as string,\n\t\tProvince as string,\n\t\tPostalCode as string,\n\t\tAge as integer,\n\t\tCurrentAgeGroup as string,\n\t\tForwardStortationArea as string,\n\t\tDimensionFromDate as date,\n\t\tDimensionThroughDate as date,\n\t\tCurrentRecordFlag as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tdeletable:false,\n\tinsertable:true,\n\tupdateable:false,\n\tupsertable:false,\n\tformat: 'table',\n\tmapColumn(\n\t\tCustomerID,\n\t\tFirstName,\n\t\tLastName,\n\t\tDateOfBirth,\n\t\tCity,\n\t\tProvince,\n\t\tPostalCode,\n\t\tAge,\n\t\tCurrentAgeGroup,\n\t\tForwardStortationArea,\n\t\tDimensionFromDate,\n\t\tDimensionThroughDate,\n\t\tCurrentRecordFlag\n\t),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true,\n\terrorHandlingOption: 'stopOnFirstError') ~> InsertNewRows\nUpdateSCD sink(input(\n\t\tCustomerKey as integer,\n\t\tCustomerID as integer,\n\t\tFirstName as string,\n\t\tLastName as string,\n\t\tDateOfBirth as date,\n\t\tCity as string,\n\t\tProvince as string,\n\t\tPostalCode as string,\n\t\tAge as integer,\n\t\tCurrentAgeGroup as string,\n\t\tForwardStortationArea as string,\n\t\tDimensionFromDate as date,\n\t\tDimensionThroughDate as date,\n\t\tCurrentRecordFlag as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tdeletable:false,\n\tinsertable:false,\n\tupdateable:true,\n\tupsertable:false,\n\tkeys:['CustomerKey'],\n\tskipKeyWrites:true,\n\tformat: 'table',\n\tmapColumn(\n\t\tDimensionThroughDate = NewDimensionThroughDate,\n\t\tCurrentRecordFlag = NewCurrentRecordFlag,\n\t\tCustomerKey = ExistCustomerKey\n\t),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true,\n\terrorHandlingOption: 'stopOnFirstError') ~> UpdateSCDRows\nUpdateInfoOnly sink(input(\n\t\tCustomerKey as integer,\n\t\tCustomerID as integer,\n\t\tFirstName as string,\n\t\tLastName as string,\n\t\tDateOfBirth as date,\n\t\tCity as string,\n\t\tProvince as string,\n\t\tPostalCode as string,\n\t\tAge as integer,\n\t\tCurrentAgeGroup as string,\n\t\tForwardStortationArea as string,\n\t\tDimensionFromDate as date,\n\t\tDimensionThroughDate as date,\n\t\tCurrentRecordFlag as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tdeletable:false,\n\tinsertable:false,\n\tupdateable:true,\n\tupsertable:false,\n\tkeys:['CustomerKey'],\n\tskipKeyWrites:true,\n\tformat: 'table',\n\tmapColumn(\n\t\tFirstName,\n\t\tLastName,\n\t\tDateOfBirth,\n\t\tCity,\n\t\tProvince,\n\t\tPostalCode,\n\t\tAge,\n\t\tCurrentAgeGroup,\n\t\tForwardStortationArea,\n\t\tCustomerKey = ExistCustomerKey\n\t),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true,\n\terrorHandlingOption: 'stopOnFirstError') ~> UpdateInforRows"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/IncCopyCustomersTbl')]",
+				"[concat(variables('factoryId'), '/datasets/DimCustomerTbl')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/UpdateAge')]",
+			"type": "Microsoft.DataFactory/factories/dataflows",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"type": "MappingDataFlow",
+				"typeProperties": {
+					"sources": [
+						{
+							"dataset": {
+								"referenceName": "DimCustomerTbl",
+								"type": "DatasetReference"
+							},
+							"name": "DimCustomers"
+						}
+					],
+					"sinks": [
+						{
+							"dataset": {
+								"referenceName": "DimCustomerTbl",
+								"type": "DatasetReference"
+							},
+							"name": "UpdateAgeOnly"
+						},
+						{
+							"dataset": {
+								"referenceName": "DimCustomerTbl",
+								"type": "DatasetReference"
+							},
+							"name": "UpdateSCDRows"
+						},
+						{
+							"dataset": {
+								"referenceName": "DimCustomerTbl",
+								"type": "DatasetReference"
+							},
+							"name": "InsertNewRows"
+						}
+					],
+					"transformations": [
+						{
+							"name": "RecalculateAge"
+						},
+						{
+							"name": "AgeGroupChange"
+						},
+						{
+							"name": "UpdateAge"
+						},
+						{
+							"name": "UpdateType2SCDColumns"
+						},
+						{
+							"name": "UpdateOriginalRow"
+						}
+					],
+					"script": "source(output(\n\t\tCustomerKey as integer,\n\t\tCustomerID as integer,\n\t\tFirstName as string,\n\t\tLastName as string,\n\t\tDateOfBirth as date,\n\t\tCity as string,\n\t\tProvince as string,\n\t\tPostalCode as string,\n\t\tAge as integer,\n\t\tCurrentAgeGroup as string,\n\t\tForwardStortationArea as string,\n\t\tDimensionFromDate as date,\n\t\tDimensionThroughDate as date,\n\t\tCurrentRecordFlag as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tisolationLevel: 'READ_UNCOMMITTED',\n\tformat: 'table') ~> DimCustomers\nDimCustomers derive(UpdatedAge = iif(month(currentDate())*100+dayOfMonth(currentDate()) < month(DateOfBirth)*100+dayOfMonth(DateOfBirth),\r\nyear(currentDate()) - year(DateOfBirth) - 1, \r\nyear(currentDate()) - year(DateOfBirth))) ~> RecalculateAge\nRecalculateAge split(UpdatedAge%10 == 0,\n\tdisjoint: false) ~> AgeGroupChange@(AgeGroupChanged, AgeGroupNoChange)\nAgeGroupChange@AgeGroupNoChange alterRow(updateIf(1==1)) ~> UpdateAge\nAgeGroupChange@AgeGroupChanged derive(UpdatedAgeGroup = concat(toString(floor(UpdatedAge/10)), '0-', toString(floor(UpdatedAge/10)), '9'),\n\t\tNewDimensionFromDate = currentDate(),\n\t\tNewDimensionThroughDate = currentDate()-1,\n\t\tNewCurrentRecordFlag = 'N') ~> UpdateType2SCDColumns\nUpdateType2SCDColumns alterRow(updateIf(1==1)) ~> UpdateOriginalRow\nUpdateAge sink(input(\n\t\tCustomerKey as integer,\n\t\tCustomerID as integer,\n\t\tFirstName as string,\n\t\tLastName as string,\n\t\tDateOfBirth as date,\n\t\tCity as string,\n\t\tProvince as string,\n\t\tPostalCode as string,\n\t\tAge as integer,\n\t\tCurrentAgeGroup as string,\n\t\tForwardStortationArea as string,\n\t\tDimensionFromDate as date,\n\t\tDimensionThroughDate as date,\n\t\tCurrentRecordFlag as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tdeletable:false,\n\tinsertable:false,\n\tupdateable:true,\n\tupsertable:false,\n\tkeys:['CustomerKey'],\n\tskipKeyWrites:true,\n\tformat: 'table',\n\tmapColumn(\n\t\tCustomerKey,\n\t\tAge = UpdatedAge\n\t),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true,\n\terrorHandlingOption: 'stopOnFirstError') ~> UpdateAgeOnly\nUpdateOriginalRow sink(input(\n\t\tCustomerKey as integer,\n\t\tCustomerID as integer,\n\t\tFirstName as string,\n\t\tLastName as string,\n\t\tDateOfBirth as date,\n\t\tCity as string,\n\t\tProvince as string,\n\t\tPostalCode as string,\n\t\tAge as integer,\n\t\tCurrentAgeGroup as string,\n\t\tForwardStortationArea as string,\n\t\tDimensionFromDate as date,\n\t\tDimensionThroughDate as date,\n\t\tCurrentRecordFlag as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tdeletable:false,\n\tinsertable:false,\n\tupdateable:true,\n\tupsertable:false,\n\tkeys:['CustomerKey'],\n\tskipKeyWrites:true,\n\tformat: 'table',\n\tmapColumn(\n\t\tCustomerKey,\n\t\tDimensionThroughDate = NewDimensionThroughDate,\n\t\tCurrentRecordFlag = NewCurrentRecordFlag\n\t),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true,\n\terrorHandlingOption: 'stopOnFirstError') ~> UpdateSCDRows\nUpdateType2SCDColumns sink(input(\n\t\tCustomerKey as integer,\n\t\tCustomerID as integer,\n\t\tFirstName as string,\n\t\tLastName as string,\n\t\tDateOfBirth as date,\n\t\tCity as string,\n\t\tProvince as string,\n\t\tPostalCode as string,\n\t\tAge as integer,\n\t\tCurrentAgeGroup as string,\n\t\tForwardStortationArea as string,\n\t\tDimensionFromDate as date,\n\t\tDimensionThroughDate as date,\n\t\tCurrentRecordFlag as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tdeletable:false,\n\tinsertable:true,\n\tupdateable:false,\n\tupsertable:false,\n\tformat: 'table',\n\tmapColumn(\n\t\tCustomerID,\n\t\tFirstName,\n\t\tLastName,\n\t\tDateOfBirth,\n\t\tCity,\n\t\tProvince,\n\t\tPostalCode,\n\t\tAge = UpdatedAge,\n\t\tCurrentAgeGroup = UpdatedAgeGroup,\n\t\tForwardStortationArea,\n\t\tDimensionFromDate = NewDimensionFromDate,\n\t\tDimensionThroughDate,\n\t\tCurrentRecordFlag\n\t),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true,\n\terrorHandlingOption: 'stopOnFirstError') ~> InsertNewRows"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/DimCustomerTbl')]"
+			]
+		}
+	]
+}
