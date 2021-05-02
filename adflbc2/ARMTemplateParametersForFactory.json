@@ -1,0 +1,21 @@
+{
+	"$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"value": "adflbc2"
+		},
+		"AzureSqlDbSink_connectionString": {
+			"value": ""
+		},
+		"AzureSqlSource_connectionString": {
+			"value": ""
+		},
+		"AzureSqlStage_connectionString": {
+			"value": ""
+		},
+		"AzureKeyVault_properties_typeProperties_baseUrl": {
+			"value": "https://keyVaultlbChen.vault.azure.net/"
+		}
+	}
+}
