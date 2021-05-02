@@ -2,7 +2,7 @@
 	"name": "WatermarkDataset",
 	"properties": {
 		"linkedServiceName": {
-			"referenceName": "AzureSqlDatabaseLinkedService",
+			"referenceName": "AzureSqlStage",
 			"type": "LinkedServiceReference"
 		},
 		"annotations": [],

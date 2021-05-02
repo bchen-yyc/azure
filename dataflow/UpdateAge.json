@@ -1,0 +1,58 @@
+{
+	"name": "UpdateAge",
+	"properties": {
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "DimCustomerTbl",
+						"type": "DatasetReference"
+					},
+					"name": "DimCustomers"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "DimCustomerTbl",
+						"type": "DatasetReference"
+					},
+					"name": "UpdateAgeOnly"
+				},
+				{
+					"dataset": {
+						"referenceName": "DimCustomerTbl",
+						"type": "DatasetReference"
+					},
+					"name": "UpdateSCDRows"
+				},
+				{
+					"dataset": {
+						"referenceName": "DimCustomerTbl",
+						"type": "DatasetReference"
+					},
+					"name": "InsertNewRows"
+				}
+			],
+			"transformations": [
+				{
+					"name": "RecalculateAge"
+				},
+				{
+					"name": "AgeGroupChange"
+				},
+				{
+					"name": "UpdateAge"
+				},
+				{
+					"name": "UpdateType2SCDColumns"
+				},
+				{
+					"name": "UpdateOriginalRow"
+				}
+			],
+			"script": "source(output(\n\t\tCustomerKey as integer,\n\t\tCustomerID as integer,\n\t\tFirstName as string,\n\t\tLastName as string,\n\t\tDateOfBirth as date,\n\t\tCity as string,\n\t\tProvince as string,\n\t\tPostalCode as string,\n\t\tAge as integer,\n\t\tCurrentAgeGroup as string,\n\t\tForwardStortationArea as string,\n\t\tDimensionFromDate as date,\n\t\tDimensionThroughDate as date,\n\t\tCurrentRecordFlag as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tisolationLevel: 'READ_UNCOMMITTED',\n\tformat: 'table') ~> DimCustomers\nDimCustomers derive(UpdatedAge = iif(month(currentDate())*100+dayOfMonth(currentDate()) < month(DateOfBirth)*100+dayOfMonth(DateOfBirth),\r\nyear(currentDate()) - year(DateOfBirth) - 1, \r\nyear(currentDate()) - year(DateOfBirth))) ~> RecalculateAge\nRecalculateAge split(UpdatedAge%10 == 0,\n\tdisjoint: false) ~> AgeGroupChange@(AgeGroupChanged, AgeGroupNoChange)\nAgeGroupChange@AgeGroupNoChange alterRow(updateIf(1==1)) ~> UpdateAge\nAgeGroupChange@AgeGroupChanged derive(UpdatedAgeGroup = concat(toString(floor(UpdatedAge/10)), '0-', toString(floor(UpdatedAge/10)), '9'),\n\t\tNewDimensionFromDate = currentDate(),\n\t\tNewDimensionThroughDate = currentDate()-1,\n\t\tNewCurrentRecordFlag = 'N') ~> UpdateType2SCDColumns\nUpdateType2SCDColumns alterRow(updateIf(1==1)) ~> UpdateOriginalRow\nUpdateAge sink(input(\n\t\tCustomerKey as integer,\n\t\tCustomerID as integer,\n\t\tFirstName as string,\n\t\tLastName as string,\n\t\tDateOfBirth as date,\n\t\tCity as string,\n\t\tProvince as string,\n\t\tPostalCode as string,\n\t\tAge as integer,\n\t\tCurrentAgeGroup as string,\n\t\tForwardStortationArea as string,\n\t\tDimensionFromDate as date,\n\t\tDimensionThroughDate as date,\n\t\tCurrentRecordFlag as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tdeletable:false,\n\tinsertable:false,\n\tupdateable:true,\n\tupsertable:false,\n\tkeys:['CustomerKey'],\n\tskipKeyWrites:true,\n\tformat: 'table',\n\tmapColumn(\n\t\tCustomerKey,\n\t\tAge = UpdatedAge\n\t),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true,\n\terrorHandlingOption: 'stopOnFirstError') ~> UpdateAgeOnly\nUpdateOriginalRow sink(input(\n\t\tCustomerKey as integer,\n\t\tCustomerID as integer,\n\t\tFirstName as string,\n\t\tLastName as string,\n\t\tDateOfBirth as date,\n\t\tCity as string,\n\t\tProvince as string,\n\t\tPostalCode as string,\n\t\tAge as integer,\n\t\tCurrentAgeGroup as string,\n\t\tForwardStortationArea as string,\n\t\tDimensionFromDate as date,\n\t\tDimensionThroughDate as date,\n\t\tCurrentRecordFlag as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tdeletable:false,\n\tinsertable:false,\n\tupdateable:true,\n\tupsertable:false,\n\tkeys:['CustomerKey'],\n\tskipKeyWrites:true,\n\tformat: 'table',\n\tmapColumn(\n\t\tCustomerKey,\n\t\tDimensionThroughDate = NewDimensionThroughDate,\n\t\tCurrentRecordFlag = NewCurrentRecordFlag\n\t),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true,\n\terrorHandlingOption: 'stopOnFirstError') ~> UpdateSCDRows\nUpdateType2SCDColumns sink(input(\n\t\tCustomerKey as integer,\n\t\tCustomerID as integer,\n\t\tFirstName as string,\n\t\tLastName as string,\n\t\tDateOfBirth as date,\n\t\tCity as string,\n\t\tProvince as string,\n\t\tPostalCode as string,\n\t\tAge as integer,\n\t\tCurrentAgeGroup as string,\n\t\tForwardStortationArea as string,\n\t\tDimensionFromDate as date,\n\t\tDimensionThroughDate as date,\n\t\tCurrentRecordFlag as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tdeletable:false,\n\tinsertable:true,\n\tupdateable:false,\n\tupsertable:false,\n\tformat: 'table',\n\tmapColumn(\n\t\tCustomerID,\n\t\tFirstName,\n\t\tLastName,\n\t\tDateOfBirth,\n\t\tCity,\n\t\tProvince,\n\t\tPostalCode,\n\t\tAge = UpdatedAge,\n\t\tCurrentAgeGroup = UpdatedAgeGroup,\n\t\tForwardStortationArea,\n\t\tDimensionFromDate = NewDimensionFromDate,\n\t\tDimensionThroughDate,\n\t\tCurrentRecordFlag\n\t),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true,\n\terrorHandlingOption: 'stopOnFirstError') ~> InsertNewRows"
+		}
+	}
+}

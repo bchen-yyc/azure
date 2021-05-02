@@ -1,0 +1,9 @@
+{
+	"name": "ADFlbc",
+	"location": "westus",
+	"identity": {
+		"type": "SystemAssigned",
+		"principalId": "73f4b058-9fcc-432e-857f-eac111659a4d",
+		"tenantId": "9c7dc77f-68b5-4b96-a2e8-f5b080956987"
+	}
+}
