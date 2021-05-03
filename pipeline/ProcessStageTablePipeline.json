@@ -1,5 +1,5 @@
 {
-	"name": "IncementalCopy_Pipeline",
+	"name": "ProcessStageTablePipeline",
 	"properties": {
 		"activities": [
 			{
