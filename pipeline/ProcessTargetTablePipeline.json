@@ -25,6 +25,33 @@
 					},
 					"traceLevel": "Fine"
 				}
+			},
+			{
+				"name": "TruncateStageTables",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "ProcessTargetTbl",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[dbo].[usp_truncate_stage_table]"
+				},
+				"linkedServiceName": {
+					"referenceName": "AzureSqlStage",
+					"type": "LinkedServiceReference"
+				}
 			}
 		],
 		"annotations": []
