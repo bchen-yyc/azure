@@ -13,9 +13,6 @@
 		},
 		"AzureSqlStage_connectionString": {
 			"value": ""
-		},
-		"AzureKeyVault_properties_typeProperties_baseUrl": {
-			"value": "https://keyVaultlbChen.vault.azure.net/"
 		}
 	}
 }

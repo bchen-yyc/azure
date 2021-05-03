@@ -19,10 +19,6 @@
 			"type": "secureString",
 			"metadata": "Secure string for 'connectionString' of 'AzureSqlStage'"
 		},
-		"AzureKeyVault_properties_typeProperties_baseUrl": {
-			"type": "string",
-			"defaultValue": "https://keyVaultlbChen.vault.azure.net/"
-		},
 		"containerUri": {
 			"type": "string",
 			"metadata": "URI to storage account containing linked ARM templates"
@@ -58,9 +54,6 @@
 					},
 					"AzureSqlStage_connectionString": {
 						"value": "[parameters('AzureSqlStage_connectionString')]"
-					},
-					"AzureKeyVault_properties_typeProperties_baseUrl": {
-						"value": "[parameters('AzureKeyVault_properties_typeProperties_baseUrl')]"
 					}
 				}
 			},
