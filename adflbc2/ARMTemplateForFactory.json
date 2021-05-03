@@ -29,7 +29,7 @@
 	},
 	"resources": [
 		{
-			"name": "[concat(parameters('factoryName'), '/IncementalCopy_Pipeline')]",
+			"name": "[concat(parameters('factoryName'), '/ProcessStageTablePipeline')]",
 			"type": "Microsoft.DataFactory/factories/pipelines",
 			"apiVersion": "2018-06-01",
 			"properties": {
@@ -901,6 +901,95 @@
 				"[concat(variables('factoryId'), '/datasets/IncCopyCustomersTbl')]",
 				"[concat(variables('factoryId'), '/datasets/IncCopyTargetTbl')]",
 				"[concat(variables('factoryId'), '/datasets/StageCustomerTbl')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ProcessTargetTbl')]",
+			"type": "Microsoft.DataFactory/factories/dataflows",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"type": "MappingDataFlow",
+				"typeProperties": {
+					"sources": [
+						{
+							"dataset": {
+								"referenceName": "StageCustomerTbl",
+								"type": "DatasetReference"
+							},
+							"name": "CustomerTbl"
+						},
+						{
+							"dataset": {
+								"referenceName": "DimCustomerTbl",
+								"type": "DatasetReference"
+							},
+							"name": "ExistTbl"
+						}
+					],
+					"sinks": [
+						{
+							"dataset": {
+								"referenceName": "DimCustomerTbl",
+								"type": "DatasetReference"
+							},
+							"name": "InsertNewRows"
+						},
+						{
+							"dataset": {
+								"referenceName": "DimCustomerTbl",
+								"type": "DatasetReference"
+							},
+							"name": "UpdateSCDRows"
+						},
+						{
+							"dataset": {
+								"referenceName": "DimCustomerTbl",
+								"type": "DatasetReference"
+							},
+							"name": "UpdateInforRows"
+						}
+					],
+					"transformations": [
+						{
+							"name": "IfNewCustomer"
+						},
+						{
+							"name": "TypeOfChange"
+						},
+						{
+							"name": "LookupExistTbl"
+						},
+						{
+							"name": "UnionWithType2SCD"
+						},
+						{
+							"name": "RenamedExistTbl"
+						},
+						{
+							"name": "DerivedNewSCDColumns"
+						},
+						{
+							"name": "UpdateSCD"
+						},
+						{
+							"name": "UpdateInfoOnly"
+						},
+						{
+							"name": "CurrentRecordOnly"
+						},
+						{
+							"name": "SelectStageRows"
+						},
+						{
+							"name": "AddSCDRows"
+						}
+					],
+					"script": "source(output(\n\t\tCustomerID as integer,\n\t\tFirstName as string,\n\t\tLastName as string,\n\t\tDateOfBirth as date,\n\t\tCity as string,\n\t\tProvince as string,\n\t\tPostalCode as string,\n\t\tAge as integer,\n\t\tCurrentAgeGroup as string,\n\t\tForwardStortationArea as string,\n\t\tNewCustomerFlag as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tisolationLevel: 'READ_UNCOMMITTED',\n\tformat: 'table') ~> CustomerTbl\nsource(output(\n\t\tCustomerKey as integer,\n\t\tCustomerID as integer,\n\t\tFirstName as string,\n\t\tLastName as string,\n\t\tDateOfBirth as date,\n\t\tCity as string,\n\t\tProvince as string,\n\t\tPostalCode as string,\n\t\tAge as integer,\n\t\tCurrentAgeGroup as string,\n\t\tForwardStortationArea as string,\n\t\tDimensionFromDate as date,\n\t\tDimensionThroughDate as date,\n\t\tCurrentRecordFlag as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tisolationLevel: 'READ_UNCOMMITTED',\n\tformat: 'table') ~> ExistTbl\nCustomerTbl split(NewCustomerFlag == 'Y',\n\tdisjoint: false) ~> IfNewCustomer@(IsNewCustomers, NotNewCustomers)\nLookupExistTbl split((CurrentAgeGroup != ExistCurrentAgeGroup) || (ForwardStortationArea != ExistForwardStortationArea),\n\tdisjoint: false) ~> TypeOfChange@(Type2Change, Type1Change)\nIfNewCustomer@NotNewCustomers, RenamedExistTbl lookup(CustomerID == ExistCustomerID,\n\tmultiple: false,\n\tpickup: 'any',\n\tbroadcast: 'auto')~> LookupExistTbl\nSelectStageRows, IfNewCustomer@IsNewCustomers union(byName: true)~> UnionWithType2SCD\nCurrentRecordOnly select(mapColumn(\n\t\tExistCustomerKey = CustomerKey,\n\t\tExistCustomerID = CustomerID,\n\t\tExistFirstName = FirstName,\n\t\tExistLastName = LastName,\n\t\tExistDateOfBirth = DateOfBirth,\n\t\tExistCity = City,\n\t\tExistProvince = Province,\n\t\tExistPostalCode = PostalCode,\n\t\tExistAge = Age,\n\t\tExistCurrentAgeGroup = CurrentAgeGroup,\n\t\tExistForwardStortationArea = ForwardStortationArea,\n\t\tExistDimensionFromDate = DimensionFromDate,\n\t\tExistDimensionThroughDate = DimensionThroughDate,\n\t\tExistCurrentRecordFlag = CurrentRecordFlag\n\t),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true) ~> RenamedExistTbl\nTypeOfChange@Type2Change derive(NewDimensionThroughDate = currentDate()-1,\n\t\tNewCurrentRecordFlag = 'N') ~> DerivedNewSCDColumns\nDerivedNewSCDColumns alterRow(updateIf(1==1)) ~> UpdateSCD\nTypeOfChange@Type1Change alterRow(updateIf(1==1)) ~> UpdateInfoOnly\nExistTbl filter(CurrentRecordFlag == 'Y') ~> CurrentRecordOnly\nTypeOfChange@Type2Change select(mapColumn(\n\t\tCustomerID,\n\t\tFirstName,\n\t\tLastName,\n\t\tDateOfBirth,\n\t\tCity,\n\t\tProvince,\n\t\tPostalCode,\n\t\tAge,\n\t\tCurrentAgeGroup,\n\t\tForwardStortationArea,\n\t\tNewCustomerFlag\n\t),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true) ~> SelectStageRows\nUnionWithType2SCD derive(DimensionFromDate = currentDate(),\n\t\tDimensionThroughDate = toDate('2999-01-01'),\n\t\tCurrentRecordFlag = 'Y') ~> AddSCDRows\nAddSCDRows sink(input(\n\t\tCustomerKey as integer,\n\t\tCustomerID as integer,\n\t\tFirstName as string,\n\t\tLastName as string,\n\t\tDateOfBirth as date,\n\t\tCity as string,\n\t\tProvince as string,\n\t\tPostalCode as string,\n\t\tAge as integer,\n\t\tCurrentAgeGroup as string,\n\t\tForwardStortationArea as string,\n\t\tDimensionFromDate as date,\n\t\tDimensionThroughDate as date,\n\t\tCurrentRecordFlag as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tdeletable:false,\n\tinsertable:true,\n\tupdateable:false,\n\tupsertable:false,\n\tformat: 'table',\n\tmapColumn(\n\t\tCustomerID,\n\t\tFirstName,\n\t\tLastName,\n\t\tDateOfBirth,\n\t\tCity,\n\t\tProvince,\n\t\tPostalCode,\n\t\tAge,\n\t\tCurrentAgeGroup,\n\t\tForwardStortationArea,\n\t\tDimensionFromDate,\n\t\tDimensionThroughDate,\n\t\tCurrentRecordFlag\n\t),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true,\n\terrorHandlingOption: 'stopOnFirstError') ~> InsertNewRows\nUpdateSCD sink(input(\n\t\tCustomerKey as integer,\n\t\tCustomerID as integer,\n\t\tFirstName as string,\n\t\tLastName as string,\n\t\tDateOfBirth as date,\n\t\tCity as string,\n\t\tProvince as string,\n\t\tPostalCode as string,\n\t\tAge as integer,\n\t\tCurrentAgeGroup as string,\n\t\tForwardStortationArea as string,\n\t\tDimensionFromDate as date,\n\t\tDimensionThroughDate as date,\n\t\tCurrentRecordFlag as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tdeletable:false,\n\tinsertable:false,\n\tupdateable:true,\n\tupsertable:false,\n\tkeys:['CustomerKey'],\n\tskipKeyWrites:true,\n\tformat: 'table',\n\tmapColumn(\n\t\tDimensionThroughDate = NewDimensionThroughDate,\n\t\tCurrentRecordFlag = NewCurrentRecordFlag,\n\t\tCustomerKey = ExistCustomerKey\n\t),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true,\n\terrorHandlingOption: 'stopOnFirstError') ~> UpdateSCDRows\nUpdateInfoOnly sink(input(\n\t\tCustomerKey as integer,\n\t\tCustomerID as integer,\n\t\tFirstName as string,\n\t\tLastName as string,\n\t\tDateOfBirth as date,\n\t\tCity as string,\n\t\tProvince as string,\n\t\tPostalCode as string,\n\t\tAge as integer,\n\t\tCurrentAgeGroup as string,\n\t\tForwardStortationArea as string,\n\t\tDimensionFromDate as date,\n\t\tDimensionThroughDate as date,\n\t\tCurrentRecordFlag as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tdeletable:false,\n\tinsertable:false,\n\tupdateable:true,\n\tupsertable:false,\n\tkeys:['CustomerKey'],\n\tskipKeyWrites:true,\n\tformat: 'table',\n\tmapColumn(\n\t\tFirstName,\n\t\tLastName,\n\t\tDateOfBirth,\n\t\tCity,\n\t\tProvince,\n\t\tPostalCode,\n\t\tAge,\n\t\tCurrentAgeGroup,\n\t\tForwardStortationArea,\n\t\tCustomerKey = ExistCustomerKey\n\t),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true,\n\terrorHandlingOption: 'stopOnFirstError') ~> UpdateInforRows"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/StageCustomerTbl')]",
+				"[concat(variables('factoryId'), '/datasets/DimCustomerTbl')]"
 			]
 		},
 		{
